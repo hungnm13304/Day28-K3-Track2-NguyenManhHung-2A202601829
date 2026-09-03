@@ -59,6 +59,22 @@ Nguyễn Mạnh Hưng completed the work as an individual:
   evidence collection, failure/recovery exercise, profiling, and manifest checks;
 - prepared the architecture/ownership document and this reflection.
 
+## Failure and recovery note
+
+- During the first golden-path trigger, Airflow reported `polled=0` and no
+  Delta tables were created. Kafka offsets and direct consumer reads showed the
+  broker was healthy; the cause was an ingestion-consumer startup race on the
+  initial DAG attempt, not lost input.
+- I triggered one remediation DAG run after the consumer was ready. It drained
+  the backlog, emitted the Delta tables, refreshed Feast, and indexed Qdrant;
+  the replay/golden-path suite then passed. Delta row counts and transaction
+  history provide the no-data-loss proof in `evidence/ip02-airflow-run.json`
+  and `evidence/ip03-delta-history.json`.
+- A burst through Envoy intentionally produced HTTP 429 responses after the
+  configured 10 RPS limit. The signal was the 429 plus `x-request-id`; the
+  recovery is client backoff/retry while the gateway remains healthy. The
+  complete 200/429 capture is in `evidence/ip08-gateway.json`.
+
 ## Validation record
 
 The attached `evidence/` directory is runtime output and is intentionally
