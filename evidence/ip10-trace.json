@@ -1,7 +1,7 @@
 {
-  "trace_id": "70402175274c45d0a74641e6e01002be",
-  "traceparent": "00-70402175274c45d0a74641e6e01002be-32ee1fed37734451-01",
-  "dag_run_id": "it-f5699b34",
+  "trace_id": "d8c45a276a324f6f931de4dc804bf301",
+  "traceparent": "00-d8c45a276a324f6f931de4dc804bf301-03540558b6114929-01",
+  "dag_run_id": "it-e962f2d6",
   "span_count": 25,
   "span_names": [
     "POST",
