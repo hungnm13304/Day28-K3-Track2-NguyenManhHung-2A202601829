@@ -1,6 +1,6 @@
-# Submission architecture and ownership
+# Kiến trúc và phân công bài nộp
 
-**Owner for every role:** Nguyễn Mạnh Hưng (2A202601829), individual submission.
+**Chủ sở hữu mọi vai trò:** Nguyễn Mạnh Hưng (2A202601829), bài cá nhân.
 
 ```mermaid
 flowchart LR
@@ -22,19 +22,19 @@ flowchart LR
     Kafka --> Collector
 ```
 
-| Integration point | Boundary | Individual responsibility | Live proof |
+| Điểm tích hợp | Ranh giới | Trách nhiệm cá nhân | Evidence |
 |---|---|---|---|
-| IP01 | HTTP to Kafka | schema, idempotency key, trace header | Kafka consume evidence |
-| IP02 | Kafka to Airflow | DAG run, asset event, retry/DLQ behavior | Airflow run evidence |
-| IP03 | Airflow/Spark to Delta | replay-safe merge and time travel | Delta history evidence |
-| IP04 | Delta to Feast | snapshot, materialization, online lookup | Feast entity evidence |
-| IP05 | Delta to Qdrant | deterministic vector IDs and retrieval | Qdrant search evidence |
-| IP06 | Evaluation to MLflow | provenance, champion promotion, rollback | MLflow release evidence |
-| IP07 | RAG to vLLM | real vLLM identity, model, metrics | vLLM identity evidence |
-| IP08 | Client to Envoy | route, request ID, rate limit | 200/429 gateway evidence |
-| IP09 | Components to monitoring | scrape targets, dashboard, alert | Prometheus/Grafana evidence |
-| IP10 | Components to tracing | W3C continuity and required spans | Jaeger trace evidence |
+| IP01 | HTTP → Kafka | schema, khóa idempotency, trace header | `ip01-kafka-consume.json` |
+| IP02 | Kafka → Airflow | DAG, asset event, retry/DLQ | `ip02-airflow-run.json` |
+| IP03 | Airflow/Spark → Delta | merge replay-safe, time travel | `ip03-delta-history.json` |
+| IP04 | Delta → Feast | snapshot, materialize, online lookup | `ip04-feast-online.json` |
+| IP05 | Delta → Qdrant | vector ID xác định, retrieval | `ip05-qdrant-search.json` |
+| IP06 | Evaluation → MLflow | provenance, champion, rollback | `ip06-mlflow-release.json` |
+| IP07 | RAG → vLLM | identity thật, model, metric | `ip07-vllm-identity.json` |
+| IP08 | Client → Envoy | route, request ID, rate-limit | `ip08-gateway.json` |
+| IP09 | Components → monitoring | target, dashboard, alert | hai file IP09 |
+| IP10 | Components → tracing | W3C continuity, required span | `ip10-trace.json` |
 
-The run order is: validate contracts, start the full profile, seed/index/release,
-run the golden path and replay, demonstrate a failure/recovery, validate
-promotion/rollback, inspect trace and metrics, then capture the evidence pack.
+Thứ tự chạy: kiểm tra contract, khởi động full profile, seed/index/release,
+chạy golden path và replay, tạo sự cố/khôi phục, kiểm tra promotion/rollback,
+kiểm tra trace/metrics, rồi tạo evidence bundle.

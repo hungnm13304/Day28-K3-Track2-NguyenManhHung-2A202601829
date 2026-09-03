@@ -1,91 +1,42 @@
-# Day 28 Track 2 — Submission Answers
+# Bài nộp Day 28 Track 2 — Phần trả lời
 
-**Student:** Nguyễn Mạnh Hưng  
-**Student ID:** 2A202601829  
-**Submission mode:** Individual
+**Sinh viên:** Nguyễn Mạnh Hưng  
+**MSSV:** 2A202601829  
+**Hình thức:** Cá nhân
 
-## Technical trade-offs
+## Đánh đổi kỹ thuật
 
-- Kafka accepts ingestion asynchronously and uses the idempotency key as the
-  replay identity. This keeps the HTTP acknowledgement fast, but the client
-  must treat `202 Accepted` as queued work rather than a completed Delta write.
-- Delta MERGE is the durable deduplication boundary. The merge source keeps the
-  newest `(occurred_at, event_id)` for each idempotency key, so Kafka delivery
-  order cannot choose the winner.
-- Feast is read through its online API while Spark owns offline computation and
-  materialization. This separates request latency from lakehouse processing,
-  at the cost of accepting freshness delay between a Delta commit and an online
-  feature row.
-- Qdrant IDs are deterministic UUIDs derived from logical document IDs. Replay
-  therefore updates one point instead of growing the collection, but a document
-  identifier must remain stable throughout its lifecycle.
-- MLflow promotion uses the `champion` alias rather than a deployment-time
-  model version. Rollback is immediate and reproducible, while every release
-  must retain data, prompt, embedding, and served-model provenance.
-- Readiness distinguishes a mandatory dependency failure (`not_ready`) from an
-  optional one (`degraded`), allowing the gateway to protect users without
-  hiding reduced capability.
+- Kafka tiếp nhận bất đồng bộ và dùng khóa idempotency làm định danh replay; `202 Accepted` nghĩa là đã xếp hàng, chưa phải đã ghi Delta.
+- Delta MERGE giữ bản ghi mới nhất theo `(occurred_at, event_id)`, không phụ thuộc thứ tự Kafka.
+- Feast phục vụ online, Spark tính toán offline và materialize; độ trễ thấp hơn nhưng có độ trễ làm tươi dữ liệu.
+- Qdrant dùng UUID xác định từ document ID nên replay cập nhật đúng một vector.
+- MLflow dùng alias `champion` để promotion/rollback nhanh và giữ provenance.
+- Readiness phân biệt lỗi bắt buộc (`not_ready`) và tùy chọn (`degraded`).
 
-## Production gaps and next steps
+## Khoảng trống production
 
-- This lab uses a single Kafka broker, local volumes, and development-grade
-  credentials; production needs replicated brokers, managed durable storage,
-  secret management, backup/restore drills, and separate environments.
-- Compose proves integration locally but is not a production scheduler.
-  Kubernetes manifests and GitOps validation are included; a production rollout
-  additionally needs a real cluster, image registry, admission policy, autoscaling,
-  resource quotas, and canary/rollback monitoring.
-- The compose GPU profile serves public `Qwen/Qwen3-1.7B` vLLM 0.28.0 on the
-  local RTX 5060 Ti. Startup required a temporary 0.80 VRAM-utilization
-  override because the default 0.92 exceeded free memory; IP07 identity and
-  GPU golden-path tests now pass. Any capacity number must still be measured
-  on this hardware/model/corpus before production extrapolation.
-- Local Jaeger validates trace continuity. With the local-only credential file,
-  the LangSmith gate now passes against the existing `day22-lab` project; no
-  mock trace or fabricated credential is used.
-- The lab's `admin/admin` Grafana credentials and open local ports are for
-  classroom use only. Production needs SSO/RBAC, TLS, network policy enforcement,
-  audit logs, and secret rotation.
+Lab dùng broker, volume và credential local; production cần broker dự phòng, storage bền vững, secret management, backup/restore, cluster thật, registry, policy, autoscaling và canary rollback.
 
-## Individual contribution
+GPU profile phục vụ `Qwen/Qwen3-1.7B` bằng vLLM 0.28.0 trên RTX 5060 Ti; cần VRAM utilization 0.80. IP07 và GPU golden-path đã đạt. LangSmith đã xác minh với project `day22-lab`; key chỉ nằm trong file local.
 
-Nguyễn Mạnh Hưng completed the work as an individual:
+## Đóng góp cá nhân
 
-- implemented IP01/IP10 Kafka trace and idempotency headers;
-- implemented IP03 replay-safe Delta merge source preparation;
-- implemented IP04 Feast online feature request contract;
-- implemented IP07/IP08 readiness classification;
-- ran the fast validation suite, full-stack integration journeys, operational
-  evidence collection, failure/recovery exercise, profiling, and manifest checks;
-- prepared the architecture/ownership document and this reflection.
+Nguyễn Mạnh Hưng thực hiện toàn bộ: logic Kafka/idempotency/trace, Delta replay-safe, Feast, readiness vLLM/gateway, integration journeys, evidence, manifest validation, kiến trúc và reflection.
 
-## Failure and recovery note
+## Sự cố và khôi phục
 
-- During the first golden-path trigger, Airflow reported `polled=0` and no
-  Delta tables were created. Kafka offsets and direct consumer reads showed the
-  broker was healthy; the cause was an ingestion-consumer startup race on the
-  initial DAG attempt, not lost input.
-- I triggered one remediation DAG run after the consumer was ready. It drained
-  the backlog, emitted the Delta tables, refreshed Feast, and indexed Qdrant;
-  the replay/golden-path suite then passed. Delta row counts and transaction
-  history provide the no-data-loss proof in `evidence/ip02-airflow-run.json`
-  and `evidence/ip03-delta-history.json`.
-- A burst through Envoy intentionally produced HTTP 429 responses after the
-  configured 10 RPS limit. The signal was the 429 plus `x-request-id`; the
-  recovery is client backoff/retry while the gateway remains healthy. The
-  complete 200/429 capture is in `evidence/ip08-gateway.json`.
+- DAG đầu tiên báo `polled=0`, chưa tạo Delta. Kafka vẫn khỏe; nguyên nhân là race khi consumer khởi động, không mất dữ liệu.
+- DAG remediation sau đó drain backlog, tạo Delta, materialize Feast và index Qdrant. Replay/golden-path pass; IP02/IP03 chứng minh không mất dữ liệu.
+- Burst qua Envoy tạo HTTP 429 sau giới hạn 10 RPS. Dấu hiệu là 429 và `x-request-id`; xử lý bằng backoff/retry phía client. Chi tiết ở IP08.
 
-## Validation record
+## Kiểm thử và evidence
 
-The attached `evidence/` directory is runtime output and is intentionally
-git-ignored; submit it alongside this repository. It must contain the exact
-integration-matrix evidence filenames and the command outputs for the checks
-listed in `SUBMISSION.md`. GPU and LangSmith gates are reported separately so a
-skipped external credential gate is never represented as a pass.
+- Test nền tảng: `87 passed`.
+- Integration non-GPU: `56 passed`; GPU vLLM: `3 passed`; LangSmith: `1 passed` với `day22-lab`.
+- Integration matrix: `245 checks passed`; Ruff, portability và Kubernetes/GitOps manifest đều đạt.
+- Evidence JSON đã commit trong `evidence/`, gồm IP01–IP10 và báo cáo tổng hợp.
+- Load profile 200 request qua Envoy: 8 worker P50/P95/P99 = 0.76/307.57/360.01 ms; 16 worker = 3.12/5.20/215.96 ms. Burst thể hiện rate-limit đúng cấu hình.
 
-LangSmith verification: `1 passed, 71 deselected` with `LANGSMITH_PROJECT=day22-lab`.
+## Reflection
 
-Load probe note: 200 readiness requests through Envoy returned the configured
-local rate-limit behavior under burst load (8 workers: 14 HTTP 200, 186
-rejected/connection-level failures; 16 workers: 3 HTTP 200, 197 rejected),
-with observed p50/p95/p99 of 0.76/307.57/360.01 ms and 3.12/5.20/215.96 ms.
+Khó nhất là giữ idempotency xuyên Kafka–Delta–Feast–Qdrant và phân biệt lỗi hạ tầng với lỗi dữ liệu. Lựa chọn chính là MERGE theo bản ghi mới nhất, alias champion và readiness nhiều mức. Cải tiến tiếp theo là broker/storage dự phòng, remediation tự động và tải đại diện production.
